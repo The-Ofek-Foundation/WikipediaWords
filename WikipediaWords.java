@@ -2,6 +2,14 @@ import org.jsoup.nodes.Document;
 import org.jsoup.nodes.Element;
 import org.jsoup.select.Elements;
 
+import org.apache.commons.cli.Option;
+import org.apache.commons.cli.CommandLineParser;
+import org.apache.commons.cli.CommandLine;
+import org.apache.commons.cli.ParseException;
+import org.apache.commons.cli.HelpFormatter;
+import org.apache.commons.cli.DefaultParser;
+import org.apache.commons.cli.Options;
+
 import java.util.ArrayList;
 import java.util.Collections;
 
@@ -12,11 +20,54 @@ import java.io.BufferedReader;
 
 public class WikipediaWords {
 	public static void main(String... pumpkins) {
-		double runTime = pumpkins.length > 0 ? Double.parseDouble(pumpkins[0]):10f;
-		int numThreads = pumpkins.length > 1 ? Integer.parseInt(pumpkins[1]):1;
 
-		WikipediaWordsRunner WWR = new WikipediaWordsRunner(runTime, numThreads);
-		WWR.run();
+		Option help = new Option("help", "print this message" );
+		Option runTimeOption = Option.builder("t")
+			.longOpt("run-time")
+			.hasArg()
+			.type(Double.class)
+			.desc("number of seconds to run for")
+			.build();
+		Option numThreadsOption = Option.builder()
+			.longOpt("num-threads")
+			.hasArg()
+			.type(Integer.class)
+			.desc("number of threads to use")
+			.build();
+		Option cleanupOption = Option.builder("c")
+			.longOpt("cleanup")
+			.hasArg(false)
+			.desc("remove files after done?")
+			.build();
+
+		Options options = new Options();
+		options.addOption(help);
+		options.addOption(runTimeOption);
+		options.addOption(numThreadsOption);
+		options.addOption(cleanupOption);
+
+		CommandLineParser parser = new DefaultParser();
+
+		try {
+			CommandLine line = parser.parse(options, pumpkins);
+			if (line.hasOption("help")) {
+				HelpFormatter formatter = new HelpFormatter();
+				formatter.printHelp("WikipediaWords", options);
+			}
+			else {
+				double runTime = line.hasOption("run-time") ? Double.parseDouble(line.getOptionValue("run-time")):10f;
+				int numThreads = line.hasOption("num-threads") ? Integer.parseInt(line.getOptionValue("run-time")):1;
+				boolean cleanup = line.hasOption("cleanup");
+
+				WikipediaWordsRunner WWR = new WikipediaWordsRunner(runTime, numThreads, cleanup);
+				WWR.run();
+			}
+		}	catch (ParseException e)	{
+			System.err.println("Error parsing args");
+			HelpFormatter formatter = new HelpFormatter();
+			formatter.printHelp("./run <params>", options);
+			System.exit(51232);
+		}
 	}
 }
 
@@ -29,9 +80,10 @@ class WikipediaWordsRunner {
 	private int            articlesParsed;
 	private int            threadsCompleted, threadsParsed, threadsWritten;
 	private double         startTime, elapsedTime;
+	private boolean        cleanup;
 
 
-	public WikipediaWordsRunner(double runTime, int numThreads) {
+	public WikipediaWordsRunner(double runTime, int numThreads, boolean cleanup) {
 		wikipediaWordsThreads = new WikipediaWordsThread[numThreads];
 		for (int i = 0; i < wikipediaWordsThreads.length; i++)
 			wikipediaWordsThreads[i] = new WikipediaWordsThread(this, i, runTime);
@@ -41,6 +93,7 @@ class WikipediaWordsRunner {
 		articlesParsed = 0;
 		threadsCompleted = threadsParsed = threadsWritten = 0;
 		startTime = elapsedTime = 0;
+		this.cleanup = cleanup;
 	}
 
 	public void run() {
@@ -81,9 +134,11 @@ class WikipediaWordsRunner {
 			loadResultsFromFiles();
 			this.elapsedTime = (System.nanoTime() - startTime) / 1E9;
 			System.out.printf("Done loading in %.1f seconds!\n", this.elapsedTime);
-			System.out.printf("%-30s", "Cleaning up...");
-			cleanUp();
-			System.out.printf("Done cleaning in %.1f seconds!\n", this.elapsedTime);
+			if (cleanup) {
+				System.out.printf("%-30s", "Cleaning up...");
+				cleanUp();
+				System.out.printf("Done cleaning in %.1f seconds!\n", this.elapsedTime);
+			}
 			printResults();
 		}
 	}
@@ -246,11 +301,34 @@ class WordList extends ArrayList<WordHistogram> {
 		super();
 	}
 
+	public int insertBinary(WordHistogram word) {
+		int min = 0;
+		int max = size() - 1;
+		int mid = -1;
+		int comparison = 0;
+		while (min <= max) {
+			mid = (int)((min + max) / 2);
+			comparison = get(mid).compareTo(word);
+			if (comparison < 0)
+				min = mid + 1;
+			else if (comparison > 0)
+				max = mid - 1;
+			else {
+				get(mid).incrementOccurences(word.getOccurrences());
+				return mid;
+			}
+		}
+		add(min, word);
+		return min;
+	}
+
 	public int insert(WordHistogram word, int startIndex)	{
 		int i = 0;
+		int comparison = 0;
 		for (i = startIndex; i < size(); i++) {
-			if (get(i).compareTo(word) < 0) continue;
-			if (get(i).compareTo(word) == 0)
+			comparison = get(i).compareTo(word);
+			if (comparison < 0) continue;
+			if (comparison == 0)
 				get(i).incrementOccurences(word.getOccurrences());
 			else add(i, word);
 			return i;
@@ -272,7 +350,7 @@ class WordsHistogram {
 	}
 
 	public int addWord(WordHistogram wordHistogram) {
-		return addWord(wordHistogram, 0);
+		return words.insertBinary(wordHistogram);
 	}
 
 	public int addWord(String word) {
