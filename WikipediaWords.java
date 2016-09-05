@@ -44,12 +44,6 @@ public class WikipediaWords {
 		wordsHistogram.addWords(wikipediaPage.getWordsLowercase());
 		headingsHistogram.addWords(wikipediaPage.getHeadings());
 		titleWordsHistogram.addWords(wikipediaPage.getTitle().split(" "));
-		// System.out.println(wikipediaPage.getTitle());
-		// System.out.println(String.join(", ", wikipediaPage.getHeadings()));
-		// System.out.println(String.join(", ", wikipediaPage.getWords()));
-		// WordsHistogram wordHistogram = new WordsHistogram();
-		// wordHistogram.addWords(wikipediaPage.getWords());
-		// System.out.println(wordHistogram);
 	}
 
 	public static Document getRandomWikipediaArticle() {
