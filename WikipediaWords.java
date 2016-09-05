@@ -28,7 +28,7 @@ public class WikipediaWords {
 			.type(Double.class)
 			.desc("number of seconds to run for")
 			.build();
-		Option numThreadsOption = Option.builder()
+		Option numThreadsOption = Option.builder("n")
 			.longOpt("num-threads")
 			.hasArg()
 			.type(Integer.class)
