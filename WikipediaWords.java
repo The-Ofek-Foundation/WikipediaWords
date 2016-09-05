@@ -23,6 +23,7 @@ class WikipediaWordsRunner {
 	private WordsHistogram titleWordsHistogram;
 	private int            articlesParsed;
 	private int            threadsCompleted;
+	private double         startTime, elapsedTime;
 
 
 	public WikipediaWordsRunner(double runTime, int numThreads) {
@@ -34,9 +35,11 @@ class WikipediaWordsRunner {
 		titleWordsHistogram = new WordsHistogram();
 		articlesParsed = 0;
 		threadsCompleted = 0;
+		startTime = elapsedTime = 0;
 	}
 
 	public void run() {
+		startTime = System.nanoTime();
 		for (int i = 0; i < wikipediaWordsThreads.length; i++)
 			wikipediaWordsThreads[i].start();
 	}
@@ -47,12 +50,14 @@ class WikipediaWordsRunner {
 		this.titleWordsHistogram.addWords(titleWordsHistogram.getWords());
 		this.articlesParsed += articlesParsed;
 		threadsCompleted++;
+		elapsedTime = (System.nanoTime() - startTime) / 1E9;
 		if (threadsCompleted == wikipediaWordsThreads.length)
 			printResults();
+		else System.out.printf("\nParsed %7,d articles in %,.1f seconds!", this.articlesParsed, elapsedTime);
 	}
 
 	public void printResults() {
-		System.out.printf("\nParsed %d articles!\n\n", articlesParsed);
+		System.out.printf("\nParsed %7,d articles in %,.1f seconds!\n\n", this.articlesParsed, elapsedTime);
 
 		System.out.printf("Top 10 words:\n%s\n", wordsHistogram.toString(10));
 		System.out.printf("Top 10 headings:\n%s\n", headingsHistogram.toString(10));
@@ -70,6 +75,7 @@ class WikipediaWordsThread extends Thread {
 	private Thread thread;
 	private WikipediaWordsRunner runner;
 	private int threadNum;
+	private String threadName;
 	private double runTime;
 
 	WikipediaWordsThread(WikipediaWordsRunner runner, int threadNum, double runTime) {
@@ -77,6 +83,7 @@ class WikipediaWordsThread extends Thread {
 		this.threadNum = threadNum;
 		this.runTime = runTime;
 
+		threadName = String.format("Thread Number - %d", threadNum);
 		wordsHistogram = new WordsHistogram();
 		headingsHistogram = new WordsHistogram();
 		titleWordsHistogram = new WordsHistogram();
@@ -87,12 +94,11 @@ class WikipediaWordsThread extends Thread {
 		for (double startTime = System.nanoTime(), elapsedTime = 0; elapsedTime < runTime; elapsedTime = (System.nanoTime() - startTime) / 1E9, articlesParsed++)
 			parseRandomArticle();
 		runner.Results(wordsHistogram, headingsHistogram, titleWordsHistogram, articlesParsed);
-		// printResults();
 	}
 
 	public void start() {
 		if (thread == null) {
-			thread = new Thread(this, "");
+			thread = new Thread(this, threadName);
 			thread.start();
 		}
 	}
@@ -108,9 +114,11 @@ class WikipediaWordsThread extends Thread {
 	public void parseRandomArticle() {
 		Document doc = getRandomWikipediaArticle();
 		WikipediaPage wikipediaPage = new WikipediaPage(doc);
-		wordsHistogram.addWords(wikipediaPage.getWordsLowercase());
-		headingsHistogram.addWords(wikipediaPage.getHeadings());
-		titleWordsHistogram.addWords(wikipediaPage.getTitle().split(" "));
+		if (wikipediaPage.isValid()) {
+			wordsHistogram.addWords(wikipediaPage.getWordsLowercase());
+			headingsHistogram.addWords(wikipediaPage.getHeadings());
+			titleWordsHistogram.addWords(wikipediaPage.getTitle().split(" "));
+		}
 	}
 
 	public static Document getRandomWikipediaArticle() {
@@ -181,9 +189,6 @@ class WordsHistogram {
 
 	public void addWord(WordHistogram wordHistogram) {
 		words.insert(wordHistogram);
-		// int index = binarySearch(word);
-		// if (index == -1) {
-		// }
 	}
 
 	public void addWord(String word) {
@@ -257,20 +262,26 @@ class WikipediaPage {
 	private String   title;
 	private String[] headings;
 	private String[] words, wordslc;
+	private boolean badArticle;
 
 	public WikipediaPage(Document article) {
+		badArticle = false;
 		parseWikipediaPage(article);
 	}
 
 	private void parseWikipediaPage(Document article) {
-		Element content = article.getElementById("content");
-		parseTitle(content);
-		parseHeadings(content);
-		parseWords(content);
+		try {
+			Element content = article.getElementById("content");
+			parseTitle(content);
+			parseHeadings(content);
+			parseWords(content);
+		}	catch (NullPointerException e) {
+			badArticle = true;
+		}
 	}
 
 	private void parseTitle(Element content) {
-		title = content.getElementById("firstHeading").text().replaceAll("[^A-Za-z\\- \\']", "").replaceAll("  +", " ");
+		title = content.getElementById("firstHeading").text().replaceAll("[^A-Za-z0-9\\- \\']", "").replaceAll("  +", " ");
 	}
 
 	private void parseHeadings(Element content) {
@@ -285,6 +296,10 @@ class WikipediaPage {
 		articleContents = articleContents.replaceAll("[^A-Za-z\\- \\']", "").replaceAll("  +", " ");
 		words = articleContents.split(" ");
 		wordslc = articleContents.toLowerCase().split(" ");
+	}
+
+	public boolean isValid() {
+		return !badArticle;
 	}
 
 	public String getTitle() {
