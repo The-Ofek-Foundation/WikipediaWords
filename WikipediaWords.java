@@ -188,7 +188,7 @@ class WikipediaWordsThread extends Thread {
 			wordsHistogram.addWords(wikipediaPage.getWordsLowercase());
 			headingsHistogram.addWords(wikipediaPage.getHeadings());
 			titleWordsHistogram.addWords(wikipediaPage.getTitle().split(" "));
-		}
+		}	else articlesParsed--;
 	}
 
 	public static Document getRandomWikipediaArticle() {
