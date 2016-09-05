@@ -7,12 +7,16 @@ import java.util.Collections;
 
 public class WikipediaWords {
 
+	private WikipediaWordsThread[] wikipediaWordsThreads;
 	private WordsHistogram wordsHistogram;
 	private WordsHistogram headingsHistogram;
 	private WordsHistogram titleWordsHistogram;
 	private int            articlesParsed;
 
-	public WikipediaWords() {
+	public WikipediaWords(double runTime, int numThreads) {
+		wikipediaWordsThreads = new WikipediaWordsThread[numThreads];
+		for (int i = 0; i < wikipediaWordsThreads.length; i++)
+			wikipediaWordsThreads[i] = new WikipediaWordsThread(i, runTime);
 		wordsHistogram = new WordsHistogram();
 		headingsHistogram = new WordsHistogram();
 		titleWordsHistogram = new WordsHistogram();
@@ -20,14 +24,61 @@ public class WikipediaWords {
 	}
 
 	public static void main(String... pumpkins) {
-		WikipediaWords WW = new WikipediaWords();
-		WW.run(Double.parseDouble(pumpkins.length > 0 ? pumpkins[0]:"10"));
+		double runTime = pumpkins.length > 0 ? Double.parseDouble(pumpkins[0]):10f;
+		int numThreads = pumpkins.length > 1 ? Integer.parseInt(pumpkins[1]):1;
+
+		WikipediaWords WW = new WikipediaWords(runTime, numThreads);
+		WW.run();
 	}
 
-	public void run(double runTime) {
-		for (double startTime = System.nanoTime(), elapsedTime = 0; elapsedTime < runTime; elapsedTime = (System.nanoTime() - startTime) / 1E9, articlesParsed++)
-			parseRandomArticle();
+	public void run() {
+		for (int i = 0; i < wikipediaWordsThreads.length; i++)
+			wikipediaWordsThreads[i].start();
+	}
+
+	public void printResults() {
+		System.out.printf("\nParsed %d articles!\n\n", articlesParsed);
+
+		System.out.printf("Top 10 words:\n%s\n", wordsHistogram.toString(10));
+		System.out.printf("Top 10 headings:\n%s\n", headingsHistogram.toString(10));
+		System.out.printf("Top 10 title words:\n%s\n", titleWordsHistogram.toString(10));
+	}
+}
+
+class WikipediaWordsThread extends Thread {
+
+	private WordsHistogram wordsHistogram;
+	private WordsHistogram headingsHistogram;
+	private WordsHistogram titleWordsHistogram;
+	private int            articlesParsed;
+
+	private Thread thread;
+	private int threadNum;
+	private double runTime;
+
+	WikipediaWordsThread(int threadNum, double runTime) {
+		this.threadNum = threadNum;
+		this.runTime = runTime;
+
+		wordsHistogram = new WordsHistogram();
+		headingsHistogram = new WordsHistogram();
+		titleWordsHistogram = new WordsHistogram();
+		articlesParsed = 0;
+	}
+
+	public void run() {
+		// try {
+			for (double startTime = System.nanoTime(), elapsedTime = 0; elapsedTime < runTime; elapsedTime = (System.nanoTime() - startTime) / 1E9, articlesParsed++)
+				parseRandomArticle();
+		// }	catch (InterruptedException e) {}
 		printResults();
+	}
+
+	public void start() {
+		if (thread == null) {
+			thread = new Thread(this, "");
+			thread.start();
+		}
 	}
 
 	public void printResults() {
@@ -84,7 +135,7 @@ class WordHistogram implements Comparable<WordHistogram> {
 
 	@Override
 	public String toString() {
-		return String.format("%s - %d", word, occurrences);
+		return String.format("%30s - %d", word, occurrences);
 	}
 }
 
