@@ -10,30 +10,32 @@ public class WikipediaWords {
 	private WordsHistogram wordsHistogram;
 	private WordsHistogram headingsHistogram;
 	private WordsHistogram titleWordsHistogram;
+	private int            articlesParsed;
 
 	public WikipediaWords() {
 		wordsHistogram = new WordsHistogram();
 		headingsHistogram = new WordsHistogram();
 		titleWordsHistogram = new WordsHistogram();
+		articlesParsed = 0;
 	}
 
 	public static void main(String... pumpkins) {
 		WikipediaWords WW = new WikipediaWords();
-		WW.run();
+		WW.run(Double.parseDouble(pumpkins.length > 0 ? pumpkins[0]:"10"));
 	}
 
-	public void run() {
-		for (int i = 0; i < 10; i++)
+	public void run(double runTime) {
+		for (double startTime = System.nanoTime(), elapsedTime = 0; elapsedTime < runTime; elapsedTime = (System.nanoTime() - startTime) / 1E9, articlesParsed++)
 			parseRandomArticle();
-		// System.out.println(wordsHistogram);
-		// System.out.println(String.join(", ", wordsHistogram.getTopWords(10)));
 		printResults();
 	}
 
 	public void printResults() {
-		System.out.println(wordsHistogram.toString(10));
-		System.out.println(headingsHistogram.toString(10));
-		System.out.println(titleWordsHistogram.toString(10));
+		System.out.printf("\nParsed %d articles!\n\n", articlesParsed);
+
+		System.out.printf("Top 10 words:\n%s\n", wordsHistogram.toString(10));
+		System.out.printf("Top 10 headings:\n%s\n", headingsHistogram.toString(10));
+		System.out.printf("Top 10 title words:\n%s\n", titleWordsHistogram.toString(10));
 	}
 
 	public void parseRandomArticle() {
@@ -198,14 +200,14 @@ class WikipediaPage {
 	}
 
 	private void parseTitle(Element content) {
-		title = content.getElementById("firstHeading").text();
+		title = content.getElementById("firstHeading").text().replaceAll("[^A-Za-z\\- \\']", "").replaceAll("  +", " ");
 	}
 
 	private void parseHeadings(Element content) {
 		Elements headingsDOM = content.getElementsByClass("mw-headline");
 		headings = new String[headingsDOM.size()];
 		for (int i = 0; i < headings.length; i++)
-			headings[i] = headingsDOM.eq(i).text();
+			headings[i] = headingsDOM.eq(i).text().replaceAll("[^A-Za-z\\- \\']", "").replaceAll("  +", " ");
 	}
 
 	private void parseWords(Element content) {
