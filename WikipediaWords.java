@@ -6,34 +6,49 @@ import java.util.ArrayList;
 import java.util.Collections;
 
 public class WikipediaWords {
+	public static void main(String... pumpkins) {
+		double runTime = pumpkins.length > 0 ? Double.parseDouble(pumpkins[0]):10f;
+		int numThreads = pumpkins.length > 1 ? Integer.parseInt(pumpkins[1]):1;
+
+		WikipediaWordsRunner WWR = new WikipediaWordsRunner(runTime, numThreads);
+		WWR.run();
+	}
+}
+
+class WikipediaWordsRunner {
 
 	private WikipediaWordsThread[] wikipediaWordsThreads;
 	private WordsHistogram wordsHistogram;
 	private WordsHistogram headingsHistogram;
 	private WordsHistogram titleWordsHistogram;
 	private int            articlesParsed;
+	private int            threadsCompleted;
 
-	public WikipediaWords(double runTime, int numThreads) {
+
+	public WikipediaWordsRunner(double runTime, int numThreads) {
 		wikipediaWordsThreads = new WikipediaWordsThread[numThreads];
 		for (int i = 0; i < wikipediaWordsThreads.length; i++)
-			wikipediaWordsThreads[i] = new WikipediaWordsThread(i, runTime);
+			wikipediaWordsThreads[i] = new WikipediaWordsThread(this, i, runTime);
 		wordsHistogram = new WordsHistogram();
 		headingsHistogram = new WordsHistogram();
 		titleWordsHistogram = new WordsHistogram();
 		articlesParsed = 0;
-	}
-
-	public static void main(String... pumpkins) {
-		double runTime = pumpkins.length > 0 ? Double.parseDouble(pumpkins[0]):10f;
-		int numThreads = pumpkins.length > 1 ? Integer.parseInt(pumpkins[1]):1;
-
-		WikipediaWords WW = new WikipediaWords(runTime, numThreads);
-		WW.run();
+		threadsCompleted = 0;
 	}
 
 	public void run() {
 		for (int i = 0; i < wikipediaWordsThreads.length; i++)
 			wikipediaWordsThreads[i].start();
+	}
+
+	public synchronized void Results(WordsHistogram wordsHistogram, WordsHistogram headingsHistogram, WordsHistogram titleWordsHistogram, int articlesParsed) {
+		this.wordsHistogram.addWords(wordsHistogram.getWords());
+		this.headingsHistogram.addWords(headingsHistogram.getWords());
+		this.titleWordsHistogram.addWords(titleWordsHistogram.getWords());
+		this.articlesParsed += articlesParsed;
+		threadsCompleted++;
+		if (threadsCompleted == wikipediaWordsThreads.length)
+			printResults();
 	}
 
 	public void printResults() {
@@ -53,10 +68,12 @@ class WikipediaWordsThread extends Thread {
 	private int            articlesParsed;
 
 	private Thread thread;
+	private WikipediaWordsRunner runner;
 	private int threadNum;
 	private double runTime;
 
-	WikipediaWordsThread(int threadNum, double runTime) {
+	WikipediaWordsThread(WikipediaWordsRunner runner, int threadNum, double runTime) {
+		this.runner = runner;
 		this.threadNum = threadNum;
 		this.runTime = runTime;
 
@@ -67,11 +84,10 @@ class WikipediaWordsThread extends Thread {
 	}
 
 	public void run() {
-		// try {
-			for (double startTime = System.nanoTime(), elapsedTime = 0; elapsedTime < runTime; elapsedTime = (System.nanoTime() - startTime) / 1E9, articlesParsed++)
-				parseRandomArticle();
-		// }	catch (InterruptedException e) {}
-		printResults();
+		for (double startTime = System.nanoTime(), elapsedTime = 0; elapsedTime < runTime; elapsedTime = (System.nanoTime() - startTime) / 1E9, articlesParsed++)
+			parseRandomArticle();
+		runner.Results(wordsHistogram, headingsHistogram, titleWordsHistogram, articlesParsed);
+		// printResults();
 	}
 
 	public void start() {
@@ -112,8 +128,8 @@ class WordHistogram implements Comparable<WordHistogram> {
 		this.occurrences = 1;
 	}
 
-	public void incrementOccurences() {
-		occurrences++;
+	public void incrementOccurences(int increment) {
+		occurrences += increment;
 	}
 
 	public String getWord() {
@@ -148,7 +164,7 @@ class WordList extends ArrayList<WordHistogram> {
 		for (int i = 0; i < size(); i++) {
 			if (get(i).compareTo(word) < 0) continue;
 			if (get(i).compareTo(word) == 0)
-				get(i).incrementOccurences();
+				get(i).incrementOccurences(word.getOccurrences());
 			else add(i, word);
 			return;
 		}
@@ -163,11 +179,15 @@ class WordsHistogram {
 		words = new WordList();
 	}
 
-	public void addWord(String word) {
-		words.insert(new WordHistogram(word));
+	public void addWord(WordHistogram wordHistogram) {
+		words.insert(wordHistogram);
 		// int index = binarySearch(word);
 		// if (index == -1) {
 		// }
+	}
+
+	public void addWord(String word) {
+		addWord(new WordHistogram(word));
 	}
 
 	public int binarySearch(String word) {
@@ -188,6 +208,11 @@ class WordsHistogram {
 	public void addWords(String[] words) {
 		for (int i = 0; i < words.length; i++)
 			addWord(words[i]);
+	}
+
+	public void addWords(WordList wordList) {
+		for (WordHistogram wordHistogram : wordList)
+			addWord(wordHistogram);
 	}
 
 	public WordList getWords() {
