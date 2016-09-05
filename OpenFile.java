@@ -47,4 +47,9 @@ public class OpenFile {
 			contents += reader.nextLine() + '\n';
 		return contents;
 	}
+
+	public static boolean deleteFile(String path) {
+		File file = new File(path);
+		return file.delete();
+	}
 }

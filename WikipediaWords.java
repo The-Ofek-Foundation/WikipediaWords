@@ -81,16 +81,22 @@ class WikipediaWordsRunner {
 			loadResultsFromFiles();
 			this.elapsedTime = (System.nanoTime() - startTime) / 1E9;
 			System.out.printf("Done loading in %.1f seconds!\n", this.elapsedTime);
+			System.out.printf("%-30s", "Cleaning up...");
+			cleanUp();
+			System.out.printf("Done cleaning in %.1f seconds!\n", this.elapsedTime);
 			printResults();
 		}
 	}
 
+	private void cleanUp() {
+		for (int i = 0; i < wikipediaWordsThreads.length; i++)
+			OpenFile.deleteFile(wikipediaWordsThreads[i].getFileName());
+	}
+
 	private void loadResultsFromFiles() {
-		String fileName = "";
 		BufferedReader reader = null;
 		for (int i = 0; i < wikipediaWordsThreads.length; i++) {
-			fileName = wikipediaWordsThreads[i].getFileName();
-			reader = OpenFile.openFileToReader(fileName);
+			reader = OpenFile.openFileToReader(wikipediaWordsThreads[i].getFileName());
 			loadResultsFromFile(reader, wordsHistogram);
 			loadResultsFromFile(reader, headingsHistogram);
 			loadResultsFromFile(reader, titleWordsHistogram);
@@ -110,7 +116,8 @@ class WikipediaWordsRunner {
 	}
 
 	private void printResults() {
-		System.out.printf("\nParsed %,d articles in %,.1f seconds!\n\n", this.articlesParsed, elapsedTime);
+		System.out.printf("\nParsed %,d articles in %,.1f seconds!\n", articlesParsed, elapsedTime);
+		System.out.printf("Parsed %,.2f articles per second!\n\n", articlesParsed / elapsedTime);
 
 		System.out.printf("Top 10 words:\n%s\n", wordsHistogram.toString(10));
 		System.out.printf("Top 10 headings:\n%s\n", headingsHistogram.toString(10));
@@ -270,21 +277,6 @@ class WordsHistogram {
 
 	public int addWord(String word) {
 		return addWord(new WordHistogram(word));
-	}
-
-	public int binarySearch(String word) {
-		int min = 0;
-		int max = words.size();
-		int med = -1;
-		while (min <= max) {
-			med = (int)((min + max) / 2);
-			if (words.get(med).compareTo(word) < 0)
-				min = med + 1;
-			else if (words.get(med).compareTo(word) > 0)
-				max = med;
-			else return med;
-		}
-		return -1;
 	}
 
 	public void addWords(String[] words) {
