@@ -5,6 +5,11 @@ import org.jsoup.select.Elements;
 import java.util.ArrayList;
 import java.util.Collections;
 
+import java.util.Scanner;
+import java.io.PrintWriter;
+import java.io.IOException;
+import java.io.BufferedReader;
+
 public class WikipediaWords {
 	public static void main(String... pumpkins) {
 		double runTime = pumpkins.length > 0 ? Double.parseDouble(pumpkins[0]):10f;
@@ -22,7 +27,7 @@ class WikipediaWordsRunner {
 	private WordsHistogram headingsHistogram;
 	private WordsHistogram titleWordsHistogram;
 	private int            articlesParsed;
-	private int            threadsCompleted;
+	private int            threadsCompleted, threadsParsed, threadsWritten;
 	private double         startTime, elapsedTime;
 
 
@@ -34,11 +39,12 @@ class WikipediaWordsRunner {
 		headingsHistogram = new WordsHistogram();
 		titleWordsHistogram = new WordsHistogram();
 		articlesParsed = 0;
-		threadsCompleted = 0;
+		threadsCompleted = threadsParsed = threadsWritten = 0;
 		startTime = elapsedTime = 0;
 	}
 
 	public void run() {
+		System.out.printf("\n%-30s", "Parsing random articles...");
 		startTime = System.nanoTime();
 		for (int i = 0; i < wikipediaWordsThreads.length; i++)
 			wikipediaWordsThreads[i].start();
@@ -53,11 +59,62 @@ class WikipediaWordsRunner {
 		elapsedTime = (System.nanoTime() - startTime) / 1E9;
 		if (threadsCompleted == wikipediaWordsThreads.length)
 			printResults();
-		else System.out.printf("\nParsed %7,d articles in %,.1f seconds!", this.articlesParsed, elapsedTime);
+		else System.out.printf("\nParsed %,d articles in %,.1f seconds!", this.articlesParsed, elapsedTime);
 	}
 
-	public void printResults() {
-		System.out.printf("\nParsed %7,d articles in %,.1f seconds!\n\n", this.articlesParsed, elapsedTime);
+	public synchronized void DoneParsing(int articlesParsed) {
+		this.articlesParsed += articlesParsed;
+		threadsParsed++;
+		double elapsedTime = (System.nanoTime() - startTime) / 1E9;
+		if (threadsParsed == wikipediaWordsThreads.length) {
+			System.out.printf("Done parsing %,d articles in %.1f seconds!\n", this.articlesParsed, elapsedTime);
+			System.out.printf("%-30s", "Writing results...");
+		}
+	}
+
+	public synchronized void DoneWriting() {
+		threadsWritten++;
+		double elapsedTime = (System.nanoTime() - startTime) / 1E9;
+		if (threadsWritten == wikipediaWordsThreads.length) {
+			System.out.printf("Done writing in %.1f seconds!\n", elapsedTime);
+			System.out.printf("%-30s", "Loading results...");
+			loadResultsFromFiles();
+			this.elapsedTime = (System.nanoTime() - startTime) / 1E9;
+			System.out.printf("Done loading in %.1f seconds!\n", this.elapsedTime);
+			printResults();
+		}
+	}
+
+	private void loadResultsFromFiles() {
+		String fileName = "";
+		Scanner file = null;
+		BufferedReader reader = null;
+		for (int i = 0; i < wikipediaWordsThreads.length; i++) {
+			fileName = wikipediaWordsThreads[i].getFileName();
+			// file = OpenFile.openFileToRead(fileName);
+			// file.useDelimiter(",+\\n*");
+			reader = OpenFile.openFileToReader(fileName);
+			loadResultsFromFile(reader, wordsHistogram);
+			loadResultsFromFile(reader, headingsHistogram);
+			loadResultsFromFile(reader, titleWordsHistogram);
+			// file.close();
+			try {
+				reader.close();
+			}	catch (IOException e) {}
+		}
+	}
+
+	private void loadResultsFromFile(BufferedReader reader, WordsHistogram wordsHistogram) {
+		try {
+			int numWords = Integer.parseInt(reader.readLine());
+			int currIndex = 0;
+			for (int i = 0; i < numWords; i++)
+				currIndex = wordsHistogram.addWord(new WordHistogram(reader.readLine(), Integer.parseInt(reader.readLine())), currIndex);
+		}	catch (IOException e) {}
+	}
+
+	private void printResults() {
+		System.out.printf("\nParsed %,d articles in %,.1f seconds!\n\n", this.articlesParsed, elapsedTime);
 
 		System.out.printf("Top 10 words:\n%s\n", wordsHistogram.toString(10));
 		System.out.printf("Top 10 headings:\n%s\n", headingsHistogram.toString(10));
@@ -76,6 +133,7 @@ class WikipediaWordsThread extends Thread {
 	private WikipediaWordsRunner runner;
 	private int threadNum;
 	private String threadName;
+	private String threadPath;
 	private double runTime;
 
 	WikipediaWordsThread(WikipediaWordsRunner runner, int threadNum, double runTime) {
@@ -84,6 +142,7 @@ class WikipediaWordsThread extends Thread {
 		this.runTime = runTime;
 
 		threadName = String.format("Thread Number - %d", threadNum);
+		threadPath = "results/" + threadName + ".txt";
 		wordsHistogram = new WordsHistogram();
 		headingsHistogram = new WordsHistogram();
 		titleWordsHistogram = new WordsHistogram();
@@ -93,7 +152,23 @@ class WikipediaWordsThread extends Thread {
 	public void run() {
 		for (double startTime = System.nanoTime(), elapsedTime = 0; elapsedTime < runTime; elapsedTime = (System.nanoTime() - startTime) / 1E9, articlesParsed++)
 			parseRandomArticle();
-		runner.Results(wordsHistogram, headingsHistogram, titleWordsHistogram, articlesParsed);
+		runner.DoneParsing(articlesParsed);
+		saveResultsToFile();
+		runner.DoneWriting();
+	}
+
+	private void saveResultsToFile() {
+		PrintWriter printWriter = OpenFile.openFileToWrite(threadPath);
+		saveListToFile(printWriter, wordsHistogram.getWords());
+		saveListToFile(printWriter, headingsHistogram.getWords());
+		saveListToFile(printWriter, titleWordsHistogram.getWords());
+		printWriter.close();
+	}
+
+	private void saveListToFile(PrintWriter printWriter, WordList wordList) {
+		printWriter.println(wordList.size());
+		for (WordHistogram wordHistogram : wordList)
+			printWriter.print(wordHistogram.getWord() + "\n" + wordHistogram.getOccurrences() + "\n");
 	}
 
 	public void start() {
@@ -103,15 +178,7 @@ class WikipediaWordsThread extends Thread {
 		}
 	}
 
-	public void printResults() {
-		System.out.printf("\nParsed %d articles!\n\n", articlesParsed);
-
-		System.out.printf("Top 10 words:\n%s\n", wordsHistogram.toString(10));
-		System.out.printf("Top 10 headings:\n%s\n", headingsHistogram.toString(10));
-		System.out.printf("Top 10 title words:\n%s\n", titleWordsHistogram.toString(10));
-	}
-
-	public void parseRandomArticle() {
+	private void parseRandomArticle() {
 		Document doc = getRandomWikipediaArticle();
 		WikipediaPage wikipediaPage = new WikipediaPage(doc);
 		if (wikipediaPage.isValid()) {
@@ -124,6 +191,10 @@ class WikipediaWordsThread extends Thread {
 	public static Document getRandomWikipediaArticle() {
 		return PageLoader.getDocument("https://en.wikipedia.org/wiki/Special:Random");
 	}
+
+	public String getFileName() {
+		return threadPath;
+	}
 }
 
 class WordHistogram implements Comparable<WordHistogram> {
@@ -131,9 +202,13 @@ class WordHistogram implements Comparable<WordHistogram> {
 	private String word;
 	private int	occurrences;
 
-	public WordHistogram(String word) {
+	public WordHistogram(String word, int occurrences) {
 		this.word = word;
-		this.occurrences = 1;
+		this.occurrences = occurrences;
+	}
+
+	public WordHistogram(String word) {
+		this(word, 1);
 	}
 
 	public void incrementOccurences(int increment) {
@@ -159,7 +234,7 @@ class WordHistogram implements Comparable<WordHistogram> {
 
 	@Override
 	public String toString() {
-		return String.format("%30s - %d", word, occurrences);
+		return String.format("%30s - %,d", word, occurrences);
 	}
 }
 
@@ -168,15 +243,17 @@ class WordList extends ArrayList<WordHistogram> {
 		super();
 	}
 
-	public void insert(WordHistogram word){
-		for (int i = 0; i < size(); i++) {
+	public int insert(WordHistogram word, int startIndex)	{
+		int i = 0;
+		for (i = startIndex; i < size(); i++) {
 			if (get(i).compareTo(word) < 0) continue;
 			if (get(i).compareTo(word) == 0)
 				get(i).incrementOccurences(word.getOccurrences());
 			else add(i, word);
-			return;
+			return i;
 		}
 		add(word);
+		return i;
 	}
 }
 
@@ -187,12 +264,16 @@ class WordsHistogram {
 		words = new WordList();
 	}
 
-	public void addWord(WordHistogram wordHistogram) {
-		words.insert(wordHistogram);
+	public int addWord(WordHistogram wordHistogram, int startIndex) {
+		return words.insert(wordHistogram, startIndex);
 	}
 
-	public void addWord(String word) {
-		addWord(new WordHistogram(word));
+	public int addWord(WordHistogram wordHistogram) {
+		return addWord(wordHistogram, 0);
+	}
+
+	public int addWord(String word) {
+		return addWord(new WordHistogram(word));
 	}
 
 	public int binarySearch(String word) {
@@ -218,6 +299,15 @@ class WordsHistogram {
 	public void addWords(WordList wordList) {
 		for (WordHistogram wordHistogram : wordList)
 			addWord(wordHistogram);
+	}
+
+	public void addWords(String[] words, int[] occurrences) {
+		for (int i = 0; i < words.length; i++)
+			addWord(new WordHistogram(words[i], occurrences[i]));
+	}
+
+	public int size() {
+		return words.size();
 	}
 
 	public WordList getWords() {
@@ -288,7 +378,7 @@ class WikipediaPage {
 		Elements headingsDOM = content.getElementsByClass("mw-headline");
 		headings = new String[headingsDOM.size()];
 		for (int i = 0; i < headings.length; i++)
-			headings[i] = headingsDOM.eq(i).text().replaceAll("[^A-Za-z\\- \\']", "").replaceAll("  +", " ");
+			headings[i] = headingsDOM.eq(i).text().replaceAll("[^A-Za-z0-9\\- \\']", "").replaceAll("  +", " ");
 	}
 
 	private void parseWords(Element content) {
