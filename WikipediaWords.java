@@ -87,17 +87,13 @@ class WikipediaWordsRunner {
 
 	private void loadResultsFromFiles() {
 		String fileName = "";
-		Scanner file = null;
 		BufferedReader reader = null;
 		for (int i = 0; i < wikipediaWordsThreads.length; i++) {
 			fileName = wikipediaWordsThreads[i].getFileName();
-			// file = OpenFile.openFileToRead(fileName);
-			// file.useDelimiter(",+\\n*");
 			reader = OpenFile.openFileToReader(fileName);
 			loadResultsFromFile(reader, wordsHistogram);
 			loadResultsFromFile(reader, headingsHistogram);
 			loadResultsFromFile(reader, titleWordsHistogram);
-			// file.close();
 			try {
 				reader.close();
 			}	catch (IOException e) {}
@@ -109,7 +105,7 @@ class WikipediaWordsRunner {
 			int numWords = Integer.parseInt(reader.readLine());
 			int currIndex = 0;
 			for (int i = 0; i < numWords; i++)
-				currIndex = wordsHistogram.addWord(new WordHistogram(reader.readLine(), Integer.parseInt(reader.readLine())), currIndex);
+				currIndex = 1 + wordsHistogram.addWord(new WordHistogram(reader.readLine(), Integer.parseInt(reader.readLine())), currIndex);
 		}	catch (IOException e) {}
 	}
 
