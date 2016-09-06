@@ -1,3 +1,6 @@
+import java.io.PrintWriter;
+import org.jsoup.nodes.Document;
+
 class WikipediaWordsThread extends Thread {
 
 	private WordsHistogram wordsHistogram;
