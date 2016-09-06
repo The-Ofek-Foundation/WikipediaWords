@@ -15,7 +15,6 @@ public class WikipediaWords {
 			.longOpt("run-time")
 			.hasArg()
 			.type(Double.class)
-			.required()
 			.desc("number of seconds to run for (float)")
 			.build();
 	public static Option numThreadsOption = Option.builder("n")
@@ -68,22 +67,24 @@ public class WikipediaWords {
 				printHelp = false;
 			}
 		}	catch (MissingArgumentException maException) {
-			System.err.printf("Argument required for %s!!!\n\n", maException.getOption().getOpt());
+			System.err.printf("Argument required for %s!!!\n", maException.getOption().getOpt());
 		}	catch (MissingOptionException moException) {
-			System.err.printf("Runtime option required %s!!!\n\n", moException.getMissingOptions());
+			System.err.printf("Runtime option required %s!!!\n", moException.getMissingOptions());
 		}	catch (ParseException pException)	{
-			System.err.println("Error parsing args\n");
+			System.err.println("Error parsing args");
 			System.exit(51232);
 		}	catch (NumberFormatException nfException) {
-			System.err.println("Input format mismatch!!!\n");
+			System.err.println("Input format mismatch!!!");
 			System.exit(51233);
-		}
+		}	catch (NullPointerException npException) {}
 		if (printHelp)
 			printHelpText();
 	}
 
 	public static void printHelpText() {
+		System.out.println();
 		HelpFormatter formatter = new HelpFormatter();
 		formatter.printHelp("./run <params>", options);
+		System.out.println();
 	}
 }
