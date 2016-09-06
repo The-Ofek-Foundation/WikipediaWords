@@ -6,6 +6,8 @@ import org.apache.commons.cli.Option;
 import org.apache.commons.cli.CommandLineParser;
 import org.apache.commons.cli.CommandLine;
 import org.apache.commons.cli.ParseException;
+import org.apache.commons.cli.MissingArgumentException;
+import org.apache.commons.cli.MissingOptionException;
 import org.apache.commons.cli.HelpFormatter;
 import org.apache.commons.cli.DefaultParser;
 import org.apache.commons.cli.Options;
@@ -21,62 +23,83 @@ import java.io.IOException;
 import java.io.BufferedReader;
 
 public class WikipediaWords {
-	public static void main(String... pumpkins) {
 
-		Option help = new Option("h", "help", false, "print this message" );
-		Option runTimeOption = Option.builder("t")
+	public static Option help = new Option("h", "help", false, "print this message");
+	public static Option runTimeOption = Option.builder("t")
 			.longOpt("run-time")
 			.hasArg()
 			.type(Double.class)
-			.desc("number of seconds to run for")
+			.required()
+			.desc("number of seconds to run for (float)")
 			.build();
-		Option numThreadsOption = Option.builder("n")
+	public static Option numThreadsOption = Option.builder("n")
 			.longOpt("num-threads")
 			.hasArg()
 			.type(Integer.class)
-			.desc("number of threads to use")
+			.desc("number of threads to use (int)")
 			.build();
-		Option cleanupOption = Option.builder("c")
+	public static Option cleanupOption = Option.builder("c")
 			.longOpt("cleanup")
 			.hasArg(false)
 			.desc("remove files after done?")
 			.build();
-		Option saveToFileOption = Option.builder("o")
+	public static Option saveToFileOption = Option.builder("o")
 			.longOpt("output")
 			.hasArg(false)
 			.desc("save sorted list to results file")
 			.build();
+	public static Options options = new Options()
+		.addOption(help)
+		.addOption(runTimeOption)
+		.addOption(numThreadsOption)
+		.addOption(cleanupOption)
+		.addOption(saveToFileOption);
+	public static CommandLineParser parser = new DefaultParser();
 
-		Options options = new Options();
-		options.addOption(help);
-		options.addOption(runTimeOption);
-		options.addOption(numThreadsOption);
-		options.addOption(cleanupOption);
-		options.addOption(saveToFileOption);
 
-		CommandLineParser parser = new DefaultParser();
+	public static void main(String... pumpkins) {
+
+		// try {
+		// 	for (int i = 1; i < 200; i++) {
+		// 		WikipediaWordsRunner WWR = new WikipediaWordsRunner(1000f, i, false, false);
+		// 		WWR.run();
+		// 		Thread.sleep(1100000);
+		// 	}
+		// }	catch (Exception e) {}
+
+		// System.exit(0);
+		boolean printHelp = true;
 
 		try {
 			CommandLine line = parser.parse(options, pumpkins);
-			if (line.hasOption("help")) {
-				HelpFormatter formatter = new HelpFormatter();
-				formatter.printHelp("./run <params>", options);
-			}
-			else {
-				double runTime = line.hasOption("run-time") ? Double.parseDouble(line.getOptionValue("run-time")):10f;
-				int numThreads = line.hasOption("num-threads") ? Integer.parseInt(line.getOptionValue("run-time")):1;
+			if (!line.hasOption("help"))	{
+				double runTime = Double.parseDouble(line.getOptionValue("run-time"));
+				int numThreads = line.hasOption("num-threads") ? Integer.parseInt(line.getOptionValue("num-threads")):1;
 				boolean cleanup = line.hasOption("cleanup");
 				boolean saveToFile = line.hasOption("output");
 
 				WikipediaWordsRunner WWR = new WikipediaWordsRunner(runTime, numThreads, cleanup, saveToFile);
 				WWR.run();
+				printHelp = false;
 			}
-		}	catch (ParseException e)	{
-			System.err.println("Error parsing args");
-			HelpFormatter formatter = new HelpFormatter();
-			formatter.printHelp("./run <params>", options);
+		}	catch (MissingArgumentException maException) {
+			System.err.printf("Argument required for %s!!!\n\n", maException.getOption().getOpt());
+		}	catch (MissingOptionException moException) {
+			System.err.printf("Runtime option required %s!!!\n\n", moException.getMissingOptions());
+		}	catch (ParseException pException)	{
+			System.err.println("Error parsing args\n");
 			System.exit(51232);
+		}	catch (NumberFormatException nfException) {
+			System.err.println("Input format mismatch!!!\n");
+			System.exit(51233);
 		}
+		if (printHelp)
+			printHelpText();
+	}
+
+	public static void printHelpText() {
+		HelpFormatter formatter = new HelpFormatter();
+		formatter.printHelp("./run <params>", options);
 	}
 }
 
@@ -162,16 +185,19 @@ class WikipediaWordsRunner {
 	}
 
 	private void saveToFile() {
-		saveListToOutput("results/article-words.txt", wordsHistogram.getWords().sortOccurences(), "Words in article:");
-		saveListToOutput("results/headings.txt", headingsHistogram.getWords().sortOccurences(), "Headings:");
-		saveListToOutput("results/title-words.txt", titleWordsHistogram.getWords().sortOccurences(), "Words in titles:");
+		String duplicatePrevention = "";
+		// Prevents duplicates
+		for (int i = 0; OpenFile.fileExists(String.format("results/article-words%s.txt", duplicatePrevention)); i++, duplicatePrevention = String.format("(%d)", i));
+		saveListToOutput(String.format("results/article-words%s.txt", duplicatePrevention), wordsHistogram.getWords().sortOccurences(), "Words in article:");
+		saveListToOutput(String.format("results/headings%s.txt", duplicatePrevention), headingsHistogram.getWords().sortOccurences(), "Headings:");
+		saveListToOutput(String.format("results/title-words%s.txt", duplicatePrevention), titleWordsHistogram.getWords().sortOccurences(), "Words in titles:");
 	}
 
 	private void saveListToOutput(String filePath, WordList wordList, String headingText) {
 		PrintWriter printWriter = OpenFile.openFileToWrite(filePath);
 		printWriter.println(headingText);
 		for (WordHistogram word : wordList)
-			printWriter.println(word);
+			printWriter.println(word.getWord() + "\t" + word.getOccurrences());
 		printWriter.close();
 	}
 
@@ -209,6 +235,7 @@ class WikipediaWordsRunner {
 		System.out.printf("Top 10 words:\n%s\n", wordsHistogram.toString(10));
 		System.out.printf("Top 10 headings:\n%s\n", headingsHistogram.toString(10));
 		System.out.printf("Top 10 title words:\n%s\n", titleWordsHistogram.toString(10));
+		OpenFile.appendToFile("results/threads.txt", String.format("%,d threads\t%,.0f seconds\t%,.1f articles per second\n", wikipediaWordsThreads.length, elapsedTime, articlesParsed / elapsedTime));
 	}
 }
 
@@ -274,7 +301,7 @@ class WikipediaWordsThread extends Thread {
 		if (wikipediaPage.isValid()) {
 			wordsHistogram.addWords(wikipediaPage.getWordsLowercase());
 			headingsHistogram.addWords(wikipediaPage.getHeadings());
-			titleWordsHistogram.addWords(wikipediaPage.getTitle().split(" "));
+			titleWordsHistogram.addWords(wikipediaPage.getTitle().toLowerCase().split(" "));
 		}	else articlesParsed--;
 	}
 
@@ -339,7 +366,7 @@ class WordList extends ArrayList<WordHistogram> {
 		int mid = -1;
 		int comparison = 0;
 		while (min <= max) {
-			mid = (int)((min + max) / 2);
+			mid = (min + max) / 2;
 			comparison = get(mid).compareTo(word);
 			if (comparison < 0)
 				min = mid + 1;
