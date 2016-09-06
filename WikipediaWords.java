@@ -11,7 +11,9 @@ import org.apache.commons.cli.DefaultParser;
 import org.apache.commons.cli.Options;
 
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.Collections;
+import java.util.Comparator;
 
 import java.util.Scanner;
 import java.io.PrintWriter;
@@ -39,12 +41,18 @@ public class WikipediaWords {
 			.hasArg(false)
 			.desc("remove files after done?")
 			.build();
+		Option saveToFileOption = Option.builder("o")
+			.longOpt("output")
+			.hasArg(false)
+			.desc("save sorted list to results file")
+			.build();
 
 		Options options = new Options();
 		options.addOption(help);
 		options.addOption(runTimeOption);
 		options.addOption(numThreadsOption);
 		options.addOption(cleanupOption);
+		options.addOption(saveToFileOption);
 
 		CommandLineParser parser = new DefaultParser();
 
@@ -58,8 +66,9 @@ public class WikipediaWords {
 				double runTime = line.hasOption("run-time") ? Double.parseDouble(line.getOptionValue("run-time")):10f;
 				int numThreads = line.hasOption("num-threads") ? Integer.parseInt(line.getOptionValue("run-time")):1;
 				boolean cleanup = line.hasOption("cleanup");
+				boolean saveToFile = line.hasOption("output");
 
-				WikipediaWordsRunner WWR = new WikipediaWordsRunner(runTime, numThreads, cleanup);
+				WikipediaWordsRunner WWR = new WikipediaWordsRunner(runTime, numThreads, cleanup, saveToFile);
 				WWR.run();
 			}
 		}	catch (ParseException e)	{
@@ -77,13 +86,14 @@ class WikipediaWordsRunner {
 	private WordsHistogram wordsHistogram;
 	private WordsHistogram headingsHistogram;
 	private WordsHistogram titleWordsHistogram;
-	private int            articlesParsed;
-	private int            threadsCompleted, threadsParsed, threadsWritten;
-	private double         startTime, elapsedTime;
-	private boolean        cleanup;
+	private int			articlesParsed;
+	private int			threadsCompleted, threadsParsed, threadsWritten;
+	private double		 startTime, elapsedTime;
+	private boolean		cleanup;
+	private boolean		saveToFile;
 
 
-	public WikipediaWordsRunner(double runTime, int numThreads, boolean cleanup) {
+	public WikipediaWordsRunner(double runTime, int numThreads, boolean cleanup, boolean saveToFile) {
 		wikipediaWordsThreads = new WikipediaWordsThread[numThreads];
 		for (int i = 0; i < wikipediaWordsThreads.length; i++)
 			wikipediaWordsThreads[i] = new WikipediaWordsThread(this, i, runTime);
@@ -94,6 +104,7 @@ class WikipediaWordsRunner {
 		threadsCompleted = threadsParsed = threadsWritten = 0;
 		startTime = elapsedTime = 0;
 		this.cleanup = cleanup;
+		this.saveToFile = saveToFile;
 	}
 
 	public void run() {
@@ -137,10 +148,31 @@ class WikipediaWordsRunner {
 			if (cleanup) {
 				System.out.printf("%-30s", "Cleaning up...");
 				cleanUp();
+				this.elapsedTime = (System.nanoTime() - startTime) / 1E9;
 				System.out.printf("Done cleaning in %.1f seconds!\n", this.elapsedTime);
+			}
+			if (saveToFile) {
+				System.out.printf("%-30s", "Saving results to file...");
+				saveToFile();
+				this.elapsedTime = (System.nanoTime() - startTime) / 1E9;
+				System.out.printf("Done saving in %.1f seconds!\n", this.elapsedTime);
 			}
 			printResults();
 		}
+	}
+
+	private void saveToFile() {
+		saveListToOutput("results/article-words.txt", wordsHistogram.getWords().sortOccurences(), "Words in article:");
+		saveListToOutput("results/headings.txt", headingsHistogram.getWords().sortOccurences(), "Headings:");
+		saveListToOutput("results/title-words.txt", titleWordsHistogram.getWords().sortOccurences(), "Words in titles:");
+	}
+
+	private void saveListToOutput(String filePath, WordList wordList, String headingText) {
+		PrintWriter printWriter = OpenFile.openFileToWrite(filePath);
+		printWriter.println(headingText);
+		for (WordHistogram word : wordList)
+			printWriter.println(word);
+		printWriter.close();
 	}
 
 	private void cleanUp() {
@@ -185,11 +217,11 @@ class WikipediaWordsThread extends Thread {
 	private WordsHistogram wordsHistogram;
 	private WordsHistogram headingsHistogram;
 	private WordsHistogram titleWordsHistogram;
-	private int            articlesParsed;
+	private int			   articlesParsed;
 
-	private Thread thread;
 	private WikipediaWordsRunner runner;
-	private int threadNum;
+	private Thread thread;
+	private int    threadNum;
 	private String threadName;
 	private String threadPath;
 	private double runTime;
@@ -336,6 +368,16 @@ class WordList extends ArrayList<WordHistogram> {
 		add(word);
 		return i;
 	}
+
+	public WordList sortOccurences() {
+		Collections.sort(this, new Comparator<WordHistogram>() {
+			@Override
+			public int compare(WordHistogram word1, WordHistogram word2)	{
+				return word2.getOccurrences() - word1.getOccurrences();
+			}
+		});
+		return this;
+	}
 }
 
 class WordsHistogram {
@@ -353,13 +395,11 @@ class WordsHistogram {
 		return words.insertBinary(wordHistogram);
 	}
 
-	public int addWord(String word) {
-		return addWord(new WordHistogram(word));
-	}
-
 	public void addWords(String[] words) {
+		Arrays.sort(words);
+		int startIndex = 0;
 		for (int i = 0; i < words.length; i++)
-			addWord(words[i]);
+			startIndex = addWord(new WordHistogram(words[i]), startIndex);
 	}
 
 	public void addWords(WordList wordList) {
@@ -397,7 +437,7 @@ class WordsHistogram {
 
 	public ArrayList<WordHistogram> getTopWords(int numWords) {
 		ArrayList<WordHistogram> topWords = new ArrayList<WordHistogram>(numWords);
-		int           topOccurences = 0;
+		int		   topOccurences = 0;
 		WordHistogram bestWord = null;
 		for (int i = 0; i < numWords; i++) {
 			topOccurences = 0;
