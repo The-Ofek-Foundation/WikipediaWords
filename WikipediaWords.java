@@ -21,7 +21,7 @@ import java.io.BufferedReader;
 public class WikipediaWords {
 	public static void main(String... pumpkins) {
 
-		Option help = new Option("help", "print this message" );
+		Option help = new Option("h", "help", false, "print this message" );
 		Option runTimeOption = Option.builder("t")
 			.longOpt("run-time")
 			.hasArg()
@@ -52,7 +52,7 @@ public class WikipediaWords {
 			CommandLine line = parser.parse(options, pumpkins);
 			if (line.hasOption("help")) {
 				HelpFormatter formatter = new HelpFormatter();
-				formatter.printHelp("WikipediaWords", options);
+				formatter.printHelp("./run <params>", options);
 			}
 			else {
 				double runTime = line.hasOption("run-time") ? Double.parseDouble(line.getOptionValue("run-time")):10f;
