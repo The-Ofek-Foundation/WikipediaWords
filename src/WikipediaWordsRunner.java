@@ -1,6 +1,17 @@
-import java.io.IOException;
 import java.io.BufferedReader;
+import java.io.IOException;
 import java.io.PrintWriter;
+
+/**
+ * WikipediaWords
+ *
+ * This program creates multiple threads to run the
+ * WikipediaWords program.
+ *
+ * @author Ofek Gila
+ * @since September 3rd, 2016
+ * @version September 6th, 2016
+ */
 
 public class WikipediaWordsRunner {
 
@@ -8,13 +19,21 @@ public class WikipediaWordsRunner {
 	private WordsHistogram wordsHistogram;
 	private WordsHistogram headingsHistogram;
 	private WordsHistogram titleWordsHistogram;
-	private int			articlesParsed;
-	private int			threadsCompleted, threadsParsed, threadsWritten;
-	private double		 startTime, elapsedTime;
-	private boolean		cleanup;
-	private boolean		saveToFile;
+	private int     articlesParsed;
+	private int     threadsCompleted, threadsParsed, threadsWritten;
+	private double  startTime, elapsedTime;
+	private boolean cleanup;
+	private boolean saveToFile;
 
-
+	/**
+	 * A constructor for WikipediaWords accepting the runTime in seconds,
+	 * a numThreads to create, whether or not to cleanup the files
+	 * after execution, and whether or not to saveToFile all the results.
+	 * @param  runTime    The time in seconds to run the threads for.
+	 * @param  numThreads The number of threads to create.
+	 * @param  cleanup    Whether or not to clean up the used temp files.
+	 * @param  saveToFile Whether or not to save the results sorted onto files.
+	 */
 	public WikipediaWordsRunner(double runTime, int numThreads, boolean cleanup, boolean saveToFile) {
 		wikipediaWordsThreads = new WikipediaWordsThread[numThreads];
 		for (int i = 0; i < wikipediaWordsThreads.length; i++)
@@ -29,6 +48,9 @@ public class WikipediaWordsRunner {
 		this.saveToFile = saveToFile;
 	}
 
+	/**
+	 * Runs the program, creating and starting the threads.
+	 */
 	public void run() {
 		System.out.printf("\n%-30s", "Parsing random articles...");
 		startTime = System.nanoTime();
@@ -36,18 +58,12 @@ public class WikipediaWordsRunner {
 			wikipediaWordsThreads[i].start();
 	}
 
-	public synchronized void Results(WordsHistogram wordsHistogram, WordsHistogram headingsHistogram, WordsHistogram titleWordsHistogram, int articlesParsed) {
-		this.wordsHistogram.addWords(wordsHistogram.getWords());
-		this.headingsHistogram.addWords(headingsHistogram.getWords());
-		this.titleWordsHistogram.addWords(titleWordsHistogram.getWords());
-		this.articlesParsed += articlesParsed;
-		threadsCompleted++;
-		elapsedTime = (System.nanoTime() - startTime) / 1E9;
-		if (threadsCompleted == wikipediaWordsThreads.length)
-			printResults();
-		else System.out.printf("\nParsed %,d articles in %,.1f seconds!", this.articlesParsed, elapsedTime);
-	}
-
+	/**
+	 * Called by individual threads to notify completion of
+	 * parsing articles (after specified time).
+	 * @param articlesParsed The number of articles successfully
+	 *                       parsed by the thread.
+	 */
 	public synchronized void DoneParsing(int articlesParsed) {
 		this.articlesParsed += articlesParsed;
 		threadsParsed++;
@@ -58,6 +74,10 @@ public class WikipediaWordsRunner {
 		}
 	}
 
+	/**
+	 * Called by individual threads to notify completion of
+	 * writing the results to a file.
+	 */
 	public synchronized void DoneWriting() {
 		threadsWritten++;
 		double elapsedTime = (System.nanoTime() - startTime) / 1E9;
@@ -83,6 +103,9 @@ public class WikipediaWordsRunner {
 		}
 	}
 
+	/**
+	 * Saves the results of program execution to files.
+	 */
 	private void saveToFile() {
 		String duplicatePrevention = "";
 		// Prevents duplicates
@@ -92,6 +115,13 @@ public class WikipediaWordsRunner {
 		saveListToOutput(String.format("results/title-words%s.txt", duplicatePrevention), titleWordsHistogram.getWords().sortOccurences(), "Words in titles:");
 	}
 
+	/**
+	 * Used by {@link saveToFile} function to save a single wordList
+	 * with a specific headingText to a file at a specific filePath.
+	 * @param filePath    The path to where to save the file.
+	 * @param wordList    A {@link WordList} array of words sorted by numOccurrences to save to the file.
+	 * @param headingText A line of explanatory text to write to the top of the file.
+	 */
 	private void saveListToOutput(String filePath, WordList wordList, String headingText) {
 		PrintWriter printWriter = OpenFile.openFileToWrite(filePath);
 		printWriter.println(headingText);
@@ -100,11 +130,19 @@ public class WikipediaWordsRunner {
 		printWriter.close();
 	}
 
+	/**
+	 * Deletes all used temp files in the project.
+	 */
 	private void cleanUp() {
 		for (int i = 0; i < wikipediaWordsThreads.length; i++)
 			OpenFile.deleteFile(wikipediaWordsThreads[i].getFileName());
 	}
 
+	/**
+	 * Loads results obtained by {@link WikipediaWordThread}s
+	 * after they are done saving their results to files. This
+	 * greatly increases the communication speed for results.
+	 */
 	private void loadResultsFromFiles() {
 		BufferedReader reader = null;
 		for (int i = 0; i < wikipediaWordsThreads.length; i++) {
@@ -118,6 +156,14 @@ public class WikipediaWordsRunner {
 		}
 	}
 
+	/**
+	 * A helper method for {@link loadResultsFromFiles} that loads
+	 * words onto a specific {@link WordsHistogram} from a
+	 * {@link BufferedReads} reader.
+	 * @param reader         A {@link BufferedReader} used to load results
+	 *                       from a file.
+	 * @param wordsHistogram A {@link WordsHistogram} array of words to save to.
+	 */
 	private void loadResultsFromFile(BufferedReader reader, WordsHistogram wordsHistogram) {
 		try {
 			int numWords = Integer.parseInt(reader.readLine());
@@ -127,6 +173,9 @@ public class WikipediaWordsRunner {
 		}	catch (IOException e) {}
 	}
 
+	/**
+	 * Prints top 10 results for words of all parsed articles.
+	 */
 	private void printResults() {
 		System.out.printf("\nParsed %,d articles in %,.1f seconds!\n", articlesParsed, elapsedTime);
 		System.out.printf("Parsed %,.2f articles per second!\n\n", articlesParsed / elapsedTime);

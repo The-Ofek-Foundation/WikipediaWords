@@ -1,12 +1,24 @@
-import org.apache.commons.cli.Option;
-import org.apache.commons.cli.CommandLineParser;
 import org.apache.commons.cli.CommandLine;
-import org.apache.commons.cli.ParseException;
+import org.apache.commons.cli.CommandLineParser;
+import org.apache.commons.cli.DefaultParser;
+import org.apache.commons.cli.HelpFormatter;
 import org.apache.commons.cli.MissingArgumentException;
 import org.apache.commons.cli.MissingOptionException;
-import org.apache.commons.cli.HelpFormatter;
-import org.apache.commons.cli.DefaultParser;
+import org.apache.commons.cli.Option;
 import org.apache.commons.cli.Options;
+import org.apache.commons.cli.ParseException;
+
+/**
+ * WikipediaWords
+ *
+ * This program loads and parses random Wikipedia articles
+ * in order to create statistics on the most common words
+ * in article titles, headers, and general content.
+ *
+ * @author Ofek Gila
+ * @since September 3rd, 2016
+ * @version September 6th, 2016
+ */
 
 public class WikipediaWords {
 
@@ -42,16 +54,6 @@ public class WikipediaWords {
 	public static CommandLineParser parser = new DefaultParser();
 
 	public static void main(String... pumpkins) {
-
-		// try {
-		// 	for (int i = 1; i < 200; i++) {
-		// 		WikipediaWordsRunner WWR = new WikipediaWordsRunner(1000f, i, false, false);
-		// 		WWR.run();
-		// 		Thread.sleep(1100000);
-		// 	}
-		// }	catch (Exception e) {}
-
-		// System.exit(0);
 		boolean printHelp = true;
 
 		try {
@@ -81,6 +83,9 @@ public class WikipediaWords {
 			printHelpText();
 	}
 
+	/**
+	 * Prints the command line help text for this program.
+	 */
 	public static void printHelpText() {
 		System.out.println();
 		HelpFormatter formatter = new HelpFormatter();
