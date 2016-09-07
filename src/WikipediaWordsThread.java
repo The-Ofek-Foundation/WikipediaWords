@@ -3,9 +3,9 @@ import org.jsoup.nodes.Document;
 
 class WikipediaWordsThread extends Thread {
 
-	private WordsHistogram wordsHistogram;
-	private WordsHistogram headingsHistogram;
-	private WordsHistogram titleWordsHistogram;
+	private WordList wordsList;
+	private WordList headingsList;
+	private WordList titleWordList;
 	private int			   articlesParsed;
 
 	private WikipediaWordsRunner runner;
@@ -22,9 +22,9 @@ class WikipediaWordsThread extends Thread {
 
 		threadName = String.format("Thread Number - %d", threadNum);
 		threadPath = "results/" + threadName + ".txt";
-		wordsHistogram = new WordsHistogram();
-		headingsHistogram = new WordsHistogram();
-		titleWordsHistogram = new WordsHistogram();
+		wordsList = new WordList();
+		headingsList = new WordList();
+		titleWordList = new WordList();
 		articlesParsed = 0;
 	}
 
@@ -38,9 +38,9 @@ class WikipediaWordsThread extends Thread {
 
 	private void saveResultsToFile() {
 		PrintWriter printWriter = OpenFile.openFileToWrite(threadPath);
-		saveListToFile(printWriter, wordsHistogram.getWords());
-		saveListToFile(printWriter, headingsHistogram.getWords());
-		saveListToFile(printWriter, titleWordsHistogram.getWords());
+		saveListToFile(printWriter, wordsList);
+		saveListToFile(printWriter, headingsList);
+		saveListToFile(printWriter, titleWordList);
 		printWriter.close();
 	}
 
@@ -61,9 +61,9 @@ class WikipediaWordsThread extends Thread {
 		Document doc = getRandomWikipediaArticle();
 		WikipediaPage wikipediaPage = new WikipediaPage(doc);
 		if (wikipediaPage.isValid()) {
-			wordsHistogram.addWords(wikipediaPage.getWordsLowercase());
-			headingsHistogram.addWords(wikipediaPage.getHeadings());
-			titleWordsHistogram.addWords(wikipediaPage.getTitle().toLowerCase().split(" "));
+			wordsList.addWords(wikipediaPage.getWordsLowercase());
+			headingsList.addWords(wikipediaPage.getHeadings());
+			titleWordList.addWords(wikipediaPage.getTitle().toLowerCase().split(" "));
 		}	else articlesParsed--;
 	}
 

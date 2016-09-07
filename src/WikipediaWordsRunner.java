@@ -16,9 +16,9 @@ import java.io.PrintWriter;
 public class WikipediaWordsRunner {
 
 	private WikipediaWordsThread[] wikipediaWordsThreads;
-	private WordsHistogram wordsHistogram;
-	private WordsHistogram headingsHistogram;
-	private WordsHistogram titleWordsHistogram;
+	private WordList wordsList;
+	private WordList headingsList;
+	private WordList titleWordList;
 	private int     articlesParsed;
 	private int     threadsCompleted, threadsParsed, threadsWritten;
 	private double  startTime, elapsedTime;
@@ -36,9 +36,9 @@ public class WikipediaWordsRunner {
 		wikipediaWordsThreads = new WikipediaWordsThread[numThreads];
 		for (int i = 0; i < wikipediaWordsThreads.length; i++)
 			wikipediaWordsThreads[i] = new WikipediaWordsThread(this, i, runTime);
-		wordsHistogram = new WordsHistogram();
-		headingsHistogram = new WordsHistogram();
-		titleWordsHistogram = new WordsHistogram();
+		wordsList = new WordList();
+		headingsList = new WordList();
+		titleWordList = new WordList();
 		articlesParsed = 0;
 		threadsCompleted = threadsParsed = threadsWritten = 0;
 		startTime = elapsedTime = 0;
@@ -105,9 +105,9 @@ public class WikipediaWordsRunner {
 		String duplicatePrevention = "";
 		// Prevents duplicates
 		for (int i = 0; OpenFile.fileExists(String.format("results/article-words%s.txt", duplicatePrevention)); i++, duplicatePrevention = String.format("(%d)", i));
-		saveListToOutput(String.format("results/article-words%s.txt", duplicatePrevention), wordsHistogram.getWords().sortOccurences(), "Words in article:");
-		saveListToOutput(String.format("results/headings%s.txt", duplicatePrevention), headingsHistogram.getWords().sortOccurences(), "Headings:");
-		saveListToOutput(String.format("results/title-words%s.txt", duplicatePrevention), titleWordsHistogram.getWords().sortOccurences(), "Words in titles:");
+		saveListToOutput(String.format("results/article-words%s.txt", duplicatePrevention), wordsList.sortOccurences(), "Words in article:");
+		saveListToOutput(String.format("results/headings%s.txt", duplicatePrevention), headingsList.sortOccurences(), "Headings:");
+		saveListToOutput(String.format("results/title-words%s.txt", duplicatePrevention), titleWordList.sortOccurences(), "Words in titles:");
 	}
 
 	/**
@@ -142,9 +142,9 @@ public class WikipediaWordsRunner {
 		BufferedReader reader = null;
 		for (int i = 0; i < wikipediaWordsThreads.length; i++) {
 			reader = OpenFile.openFileToReader(wikipediaWordsThreads[i].getFileName());
-			loadResultsFromFile(reader, wordsHistogram);
-			loadResultsFromFile(reader, headingsHistogram);
-			loadResultsFromFile(reader, titleWordsHistogram);
+			loadResultsFromFile(reader, wordsList);
+			loadResultsFromFile(reader, headingsList);
+			loadResultsFromFile(reader, titleWordList);
 			try {
 				reader.close();
 			}	catch (IOException e) {}
@@ -153,18 +153,18 @@ public class WikipediaWordsRunner {
 
 	/**
 	 * A helper method for {@link loadResultsFromFiles} that loads
-	 * words onto a specific {@link WordsHistogram} from a
+	 * words onto a specific {@link WordList} from a
 	 * {@link BufferedReads} reader.
 	 * @param reader         A {@link BufferedReader} used to load results
 	 *                       from a file.
-	 * @param wordsHistogram A {@link WordsHistogram} array of words to save to.
+	 * @param wordsList A {@link WordList} array of words to save to.
 	 */
-	private void loadResultsFromFile(BufferedReader reader, WordsHistogram wordsHistogram) {
+	private void loadResultsFromFile(BufferedReader reader, WordList wordsList) {
 		try {
 			int numWords = Integer.parseInt(reader.readLine());
 			int currIndex = 0;
 			for (int i = 0; i < numWords; i++)
-				currIndex = 1 + wordsHistogram.addWord(new WordHistogram(reader.readLine(), Integer.parseInt(reader.readLine())), currIndex);
+				currIndex = 1 + wordsList.addWord(new WordHistogram(reader.readLine(), Integer.parseInt(reader.readLine())), currIndex);
 		}	catch (IOException e) {}
 	}
 
@@ -175,9 +175,9 @@ public class WikipediaWordsRunner {
 		System.out.printf("\nParsed %,d articles in %,.1f seconds!\n", articlesParsed, elapsedTime);
 		System.out.printf("Parsed %,.2f articles per second!\n\n", articlesParsed / elapsedTime);
 
-		System.out.printf("Top 10 words:\n%s\n", wordsHistogram.toString(10));
-		System.out.printf("Top 10 headings:\n%s\n", headingsHistogram.toString(10));
-		System.out.printf("Top 10 title words:\n%s\n", titleWordsHistogram.toString(10));
+		System.out.printf("Top 10 words:\n%s\n", wordsList.toString(10));
+		System.out.printf("Top 10 headings:\n%s\n", headingsList.toString(10));
+		System.out.printf("Top 10 title words:\n%s\n", titleWordList.toString(10));
 		OpenFile.appendToFile("results/threads.txt", String.format("%,d threads\t%,.0f seconds\t%,.1f articles per second\n", wikipediaWordsThreads.length, elapsedTime, articlesParsed / elapsedTime));
 	}
 }

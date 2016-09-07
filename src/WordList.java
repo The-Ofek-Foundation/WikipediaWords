@@ -1,4 +1,5 @@
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.Comparator;
 import java.util.Collections;
 
@@ -41,6 +42,64 @@ class WordList extends ArrayList<WordHistogram> {
 		}
 		add(word);
 		return i;
+	}
+
+	public int addWord(WordHistogram wordHistogram, int startIndex) {
+		return insert(wordHistogram, startIndex);
+	}
+
+	public int addWord(WordHistogram wordHistogram) {
+		return insertBinary(wordHistogram);
+	}
+
+	public void addWords(String[] words) {
+		Arrays.sort(words);
+		int startIndex = 0;
+		for (int i = 0; i < words.length; i++)
+			startIndex = addWord(new WordHistogram(words[i]), startIndex);
+	}
+
+	public void addWords(WordList wordList) {
+		int startIndex = 0;
+		for (WordHistogram wordHistogram : wordList)
+			startIndex = 1 + addWord(wordHistogram, startIndex);
+	}
+
+	public void addWords(String[] words, int[] occurrences) {
+		for (int i = 0; i < words.length; i++)
+			addWord(new WordHistogram(words[i], occurrences[i]));
+	}
+
+	@Override
+	public String toString() {
+		String output = "";
+		for (WordHistogram word : this)
+			output += word + "\n";
+		return output;
+	}
+
+	public String toString(int numWords) {
+		String output = "";
+		for (WordHistogram word : getTopWords(numWords))
+			output += word + "\n";
+		return output;
+	}
+
+	public ArrayList<WordHistogram> getTopWords(int numWords) {
+		ArrayList<WordHistogram> topWords = new ArrayList<WordHistogram>(numWords);
+		int		   topOccurences = 0;
+		WordHistogram bestWord = null;
+		for (int i = 0; i < numWords; i++) {
+			topOccurences = 0;
+			bestWord = null;
+			for (WordHistogram word : this)
+				if (word.getOccurrences() > topOccurences && !topWords.contains(word)) {
+					topOccurences = word.getOccurrences();
+					bestWord = word;
+				}
+			topWords.add(bestWord);
+		}
+		return topWords;
 	}
 
 	public WordList sortOccurences() {
