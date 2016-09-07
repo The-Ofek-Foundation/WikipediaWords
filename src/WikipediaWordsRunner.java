@@ -22,19 +22,17 @@ public class WikipediaWordsRunner {
 	private int     articlesParsed;
 	private int     threadsCompleted, threadsParsed, threadsWritten;
 	private double  startTime, elapsedTime;
-	private boolean cleanup;
 	private boolean saveToFile;
 
 	/**
 	 * A constructor for WikipediaWords accepting the runTime in seconds,
-	 * a numThreads to create, whether or not to cleanup the files
-	 * after execution, and whether or not to saveToFile all the results.
+	 * a numThreads to create and whether or not to saveToFile all the
+	 * results.
 	 * @param  runTime    The time in seconds to run the threads for.
 	 * @param  numThreads The number of threads to create.
-	 * @param  cleanup    Whether or not to clean up the used temp files.
 	 * @param  saveToFile Whether or not to save the results sorted onto files.
 	 */
-	public WikipediaWordsRunner(double runTime, int numThreads, boolean cleanup, boolean saveToFile) {
+	public WikipediaWordsRunner(double runTime, int numThreads, boolean saveToFile) {
 		wikipediaWordsThreads = new WikipediaWordsThread[numThreads];
 		for (int i = 0; i < wikipediaWordsThreads.length; i++)
 			wikipediaWordsThreads[i] = new WikipediaWordsThread(this, i, runTime);
@@ -44,7 +42,6 @@ public class WikipediaWordsRunner {
 		articlesParsed = 0;
 		threadsCompleted = threadsParsed = threadsWritten = 0;
 		startTime = elapsedTime = 0;
-		this.cleanup = cleanup;
 		this.saveToFile = saveToFile;
 	}
 
@@ -87,12 +84,10 @@ public class WikipediaWordsRunner {
 			loadResultsFromFiles();
 			this.elapsedTime = (System.nanoTime() - startTime) / 1E9;
 			System.out.printf("Done loading in %.1f seconds!\n", this.elapsedTime);
-			if (cleanup) {
-				System.out.printf("%-30s", "Cleaning up...");
-				cleanUp();
-				this.elapsedTime = (System.nanoTime() - startTime) / 1E9;
-				System.out.printf("Done cleaning in %.1f seconds!\n", this.elapsedTime);
-			}
+			System.out.printf("%-30s", "Cleaning up...");
+			cleanUp();
+			this.elapsedTime = (System.nanoTime() - startTime) / 1E9;
+			System.out.printf("Done cleaning in %.1f seconds!\n", this.elapsedTime);
 			if (saveToFile) {
 				System.out.printf("%-30s", "Saving results to file...");
 				saveToFile();

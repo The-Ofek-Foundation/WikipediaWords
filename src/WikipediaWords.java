@@ -35,11 +35,6 @@ public class WikipediaWords {
 			.type(Integer.class)
 			.desc("number of threads to use (int)")
 			.build();
-	public static Option cleanupOption = Option.builder("c")
-			.longOpt("cleanup")
-			.hasArg(false)
-			.desc("remove files after done?")
-			.build();
 	public static Option saveToFileOption = Option.builder("o")
 			.longOpt("output")
 			.hasArg(false)
@@ -49,7 +44,6 @@ public class WikipediaWords {
 		.addOption(help)
 		.addOption(runTimeOption)
 		.addOption(numThreadsOption)
-		.addOption(cleanupOption)
 		.addOption(saveToFileOption);
 	public static CommandLineParser parser = new DefaultParser();
 
@@ -61,10 +55,9 @@ public class WikipediaWords {
 			if (!line.hasOption("help"))	{
 				double runTime = Double.parseDouble(line.getOptionValue("run-time"));
 				int numThreads = line.hasOption("num-threads") ? Integer.parseInt(line.getOptionValue("num-threads")):1;
-				boolean cleanup = line.hasOption("cleanup");
 				boolean saveToFile = line.hasOption("output");
 
-				WikipediaWordsRunner WWR = new WikipediaWordsRunner(runTime, numThreads, cleanup, saveToFile);
+				WikipediaWordsRunner WWR = new WikipediaWordsRunner(runTime, numThreads, saveToFile);
 				WWR.run();
 				printHelp = false;
 			}
