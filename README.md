@@ -9,4 +9,4 @@ Frequencies of words in wikipedia
 
  > ./run <params>
 
-My computer optimizes at around 100 threads (note this is Java threads and not real threads), hitting around 106 articles per second.
+My computer optimizes at around 70 threads (note this is Java threads and not real threads), hitting around 120 articles per second.
