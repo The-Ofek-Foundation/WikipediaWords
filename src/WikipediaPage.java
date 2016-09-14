@@ -50,7 +50,7 @@ class WikipediaPage {
 	 *                of a Wikipedia page.
 	 */
 	private void parseTitle(Element content) {
-		title = content.getElementById("firstHeading").text().replaceAll("[^A-Za-z0-9\\- \\']", "").replaceAll("  +", " ");
+		title = content.getElementById("firstHeading").text().replaceAll("[^\\w- ']", "").replaceAll("  +", " ").replaceAll("(?<=[^\\w])[-']+|[-']+(?=[^\\w])", "");
 	}
 
 	/**
@@ -62,7 +62,7 @@ class WikipediaPage {
 		Elements headingsDOM = content.getElementsByClass("mw-headline");
 		headings = new String[headingsDOM.size()];
 		for (int i = 0; i < headings.length; i++)
-			headings[i] = headingsDOM.eq(i).text().replaceAll("[^A-Za-z0-9\\- \\']", "").replaceAll("  +", " ");
+			headings[i] = headingsDOM.eq(i).text().replaceAll("[^\\w- ']", "").replaceAll("  +", " ").replaceAll("(?<=[^\\w])[-']+|[-']+(?=[^\\w])", "");
 	}
 
 	/**
@@ -72,7 +72,7 @@ class WikipediaPage {
 	 */
 	private void parseWords(Element content) {
 		String articleContents = content.select("#mw-content-text > p, #mw-content-text > ul").text();
-		articleContents = articleContents.replaceAll("[^A-Za-z\\- \\']", "").replaceAll("  +", " ");
+		articleContents = articleContents.replaceAll("[^A-Za-z ]", " ").replaceAll("  +", " ");
 		words = articleContents.split(" ");
 		wordslc = articleContents.toLowerCase().split(" ");
 	}

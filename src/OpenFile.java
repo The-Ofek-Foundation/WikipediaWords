@@ -33,6 +33,14 @@ public class OpenFile {
 		}
 	}
 
+	public static BufferedWriter openFileToWriter(String path) {
+		try {
+			return new BufferedWriter(new FileWriter(path, false));
+		}	catch (IOException e) {
+			return null;
+		}
+	}
+
 	/**
 	 * Writes contents to a file in a given path.
 	 * @param path     The relative path to the file.

@@ -1,4 +1,5 @@
 #!/bin/bash
 javac -cp "src/.:src/jsoup-1.9.2.jar:src/commons-cli-1.3.1.jar" src/WikipediaWords.java
+javadoc -private -cp "src/.:src/jsoup-1.9.2.jar:src/commons-cli-1.3.1.jar" -d src/javadoc src/*.java
 jar cfm WikipediaWords.jar src/Manifest.txt -C src/ .
 rm src/*.class

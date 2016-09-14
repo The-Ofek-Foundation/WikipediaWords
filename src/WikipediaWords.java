@@ -40,14 +40,21 @@ public class WikipediaWords {
 			.hasArg(false)
 			.desc("save sorted list to results file")
 			.build();
+	public static Option cumulativeOption = Option.builder("c")
+			.longOpt("cumulative")
+			.hasArg(false)
+			.desc("load and save results to build off other executions")
+			.build();
 	public static Options options = new Options()
 		.addOption(help)
 		.addOption(runTimeOption)
 		.addOption(numThreadsOption)
-		.addOption(saveToFileOption);
+		.addOption(saveToFileOption)
+		.addOption(cumulativeOption);
 	public static CommandLineParser parser = new DefaultParser();
 
 	public static void main(String... pumpkins) {
+
 		boolean printHelp = true;
 
 		try {
@@ -56,8 +63,18 @@ public class WikipediaWords {
 				double runTime = Double.parseDouble(line.getOptionValue("run-time"));
 				int numThreads = line.hasOption("num-threads") ? Integer.parseInt(line.getOptionValue("num-threads")):1;
 				boolean saveToFile = line.hasOption("output");
+				boolean cumulative = line.hasOption("cumulative");
 
-				WikipediaWordsRunner WWR = new WikipediaWordsRunner(runTime, numThreads, saveToFile);
+				// try {
+				// 	for (int i = numThreads; 1 == 1; i++) {
+				// 		WikipediaWordsRunner WWR = new WikipediaWordsRunner(100f, i, false, false);
+				// 		WWR.run();
+				// 		Thread.sleep(110000);
+				// 	}
+				// }	catch (Exception e) {}
+				// System.exit(0);
+
+				WikipediaWordsRunner WWR = new WikipediaWordsRunner(runTime, numThreads, saveToFile, cumulative);
 				WWR.run();
 				printHelp = false;
 			}
@@ -82,7 +99,7 @@ public class WikipediaWords {
 	public static void printHelpText() {
 		System.out.println();
 		HelpFormatter formatter = new HelpFormatter();
-		formatter.printHelp("./run <params>", options);
+		formatter.printHelp("./run -t <run-time> <params>", options);
 		System.out.println();
 	}
 }
