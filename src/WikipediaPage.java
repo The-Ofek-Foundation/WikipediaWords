@@ -71,7 +71,7 @@ class WikipediaPage {
 	 *                of a Wikipedia page.
 	 */
 	private void parseWords(Element content) {
-		String articleContents = content.select("#mw-content-text > p, #mw-content-text > ul").text();
+		String articleContents = content.select("#mw-content-text p, #mw-content-text ul").text();
 		articleContents = articleContents.replaceAll("[^A-Za-z ]", " ").replaceAll("  +", " ");
 		words = articleContents.split(" ");
 		wordslc = articleContents.toLowerCase().split(" ");
